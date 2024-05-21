@@ -1,0 +1,30 @@
+{
+    "name": "TLP.UdonAVLTree.Tests.Runtime",
+    "references": [
+        "GUID:5ffc5658c86203349b4ced03f037df1f",
+        "GUID:46dc224c71dea7a45a4dd8e64080dae9",
+        "GUID:68bc3016fc696ad4196dfaf30bfed765",
+        "GUID:3b40974c3b83edb45909671e8bf52bba",
+        "GUID:d5e55c3261dfa5644b45b5697ab0cfbf",
+      "GUID:b77335caf96fc924c977029c9512b87e",
+      "GUID:99835874ee819da44948776e0df4ff1d",
+      "GUID:0acc523941302664db1f4e527237feb3",
+      "GUID:27619889b8ba8c24980f49ee34dbb44a",
+      "GUID:3c1bc1267eab5884ebe7f232c09ee0d9"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll",
+        "VRCSDKBase.dll",
+        "VRCSDK3.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
