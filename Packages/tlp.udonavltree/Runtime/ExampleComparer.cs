@@ -1,4 +1,4 @@
-﻿using TLP.UdonUtils.Common;
+﻿using TLP.UdonUtils.Runtime.Common;
 using UdonSharp;
 using VRC.SDKBase;
 

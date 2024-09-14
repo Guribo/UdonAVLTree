@@ -1,5 +1,5 @@
 ﻿using JetBrains.Annotations;
-using TLP.UdonUtils;
+using TLP.UdonUtils.Runtime;
 using UdonSharp;
 using UnityEngine;
 using VRC.SDKBase;

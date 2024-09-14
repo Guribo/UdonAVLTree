@@ -6,26 +6,9 @@ A AVL tree implementation for U# based VRChat worlds.
 
 ## Installation
 
-**For simplicity reasons please install only via VRChat Creator companion and not manually using Unity packages! You will be missing dependencies when going the Unity package way!**
-
-1. Import VRChat World SDK 3.6 VCC package into your project
-2. Add CyanPlayerObjectPool package listing to VCC: https://cyanlaser.github.io/CyanPlayerObjectPool/
-3. Add TLP Package listing to VCC: https://guribo.github.io/TLP/
-4. Import TLP UdonAVLTree into your project
-   1. *This will now automatically import all other needed packages for you:*
-      - *TLP UdonUtils*
-      - *CyanPlayerObjectPool*
-
-## Setup
-
-*Note: All prefabs are in the `Packages` folder so make sure that you select either `All` or `Packages` when searching for them.*
-
-1. Add `TLP_Essentials` prefab to your scene
-2. TODO
-
-## Known Issues
-
-- TODO
+1. Install/Add VRChat World SDK 3.7 to your project
+2. Install/Add CyanPlayerObjectPool to your project: https://cyanlaser.github.io/CyanPlayerObjectPool/
+3. Install/Add TLP UdonAVLTree to your project: https://guribo.github.io/TLP/
 
 ## Versioning
 
@@ -43,6 +26,16 @@ The used pattern MAJOR.MINOR.PATCH indicates:
 ## Changelog
 
 All notable changes to this project will be documented in this file.
+
+### [0.2.0] - 2024-09-14
+
+#### 🚀 Features
+
+- Support UdonUtils 9.0
+
+#### ⚙️ Miscellaneous Tasks
+
+- Fix branch name of GitHub
 
 ### [0.1.0] - 2024-05-21
 

@@ -1,6 +1,6 @@
 #if !COMPILER_UDONSHARP && UNITY_EDITOR
 
-using TLP.UdonUtils;
+using TLP.UdonUtils.Runtime;
 
 namespace TLP.UdonAVLTree.Tests.Runtime
 {

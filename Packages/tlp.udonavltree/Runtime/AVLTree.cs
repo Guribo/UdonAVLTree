@@ -1,11 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Text;
 using JetBrains.Annotations;
-using TLP.UdonUtils;
-using TLP.UdonUtils.Common;
-using TLP.UdonUtils.Factories;
+using TLP.UdonUtils.Runtime;
+using TLP.UdonUtils.Runtime.Common;
+using TLP.UdonUtils.Runtime.Factories;
 using TLP.UdonUtils.Runtime.Pool;
 using UdonSharp;
 using UnityEngine;
@@ -24,6 +23,7 @@ namespace TLP.UdonAVLTree.Runtime
     // ReSharper disable once InconsistentNaming
     [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
     [DefaultExecutionOrder(ExecutionOrder)]
+    // ReSharper disable once InconsistentNaming
     public class AVLTree : TlpBaseBehaviour
     {
         protected override int ExecutionOrderReadOnly => ExecutionOrder;
