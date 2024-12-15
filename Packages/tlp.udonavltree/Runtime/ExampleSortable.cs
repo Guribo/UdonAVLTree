@@ -1,15 +1,24 @@
 ﻿using JetBrains.Annotations;
 using TLP.UdonUtils.Runtime;
+using TLP.UdonUtils.Runtime.Common;
 using UdonSharp;
 using UnityEngine;
 using VRC.SDKBase;
-using VRC.Udon;
 
 namespace TLP.UdonAVLTree.Runtime
 {
     [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
+    [DefaultExecutionOrder(ExecutionOrder)]
+    [TlpDefaultExecutionOrder(typeof(ExampleSortable), ExecutionOrder)]
     public class ExampleSortable : TlpBaseBehaviour
     {
+        #region ExecutionOrder
+        public override int ExecutionOrderReadOnly => ExecutionOrder;
+
+        [PublicAPI]
+        public new const int ExecutionOrder = TlpExecutionOrder.TimeSourcesStart + 2;
+        #endregion
+
         public int value;
 
         #region Comparer Interface

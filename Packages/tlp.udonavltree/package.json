@@ -1,7 +1,7 @@
 {
   "name": "tlp.udonavltree",
   "displayName": "TLP UdonAVLTree",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "description": "A AVL tree implementation for U# based VRChat worlds.",
   "gitDependencies": {},
   "legacyFolders": {
@@ -12,7 +12,8 @@
     "url": "https://github.com/Guribo"
   },
   "vpmDependencies": {
-    "tlp.udonutils": "9.0.x"
+    "com.vrchat.worlds": "~3.7.5",
+    "tlp.udonutils": "^11.0.1"
   },
   "unity": "2022.3"
 }

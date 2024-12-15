@@ -27,6 +27,16 @@ The used pattern MAJOR.MINOR.PATCH indicates:
 
 All notable changes to this project will be documented in this file.
 
+### [1.0.0] - 2024-12-15
+
+#### 🚀 Features
+
+- [**breaking**] Rename AVLTree to AvlTree
+
+#### ⚡ Performance
+
+- [**breaking**] Replace GameObject-based tree nodes with data lists
+
 ### [0.2.0] - 2024-09-14
 
 #### 🚀 Features

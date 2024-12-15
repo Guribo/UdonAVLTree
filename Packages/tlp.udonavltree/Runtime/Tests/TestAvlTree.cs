@@ -16,34 +16,14 @@ namespace TLP.UdonAVLTree.Tests.Runtime
 {
     public class TestAvlTree : TestWithLogger
     {
-        private AVLTree _avlTree;
+        private AvlTree _avlTree;
 
         [SetUp]
         public override void Setup()
         {
             base.Setup();
-
-            //var _ = new Prefabs();
-
             var avlTreeRoot = new GameObject("AVLTreeRoot");
-            var avlTreeNodes = new GameObject("AVLTreeNodes");
-
-            var avlTreeNodePrefab = new GameObject("AVLTreeNodePrefab");
-            var avlTreeNodePool = new GameObject("AVLTreeNodePool");
-
-            // attach model and element prefab to controller
-            avlTreeNodes.transform.parent = avlTreeRoot.transform;
-            avlTreeNodePrefab.transform.parent = avlTreeRoot.transform;
-            avlTreeNodePool.transform.parent = avlTreeRoot.transform;
-
-            _avlTree = avlTreeRoot.AddComponent<AVLTree>();
-            _avlTree.TreeNodes = avlTreeNodes.transform;
-
-            var pool = avlTreeNodePool.AddComponent<Pool>();
-            avlTreeNodePrefab.AddComponent<AVLTreeNode>().ownTransform = avlTreeNodePrefab.transform;
-            pool.PoolInstancePrefab = avlTreeNodePrefab;
-            _avlTree._avlTreeNodePool = pool;
-
+            _avlTree = avlTreeRoot.AddComponent<AvlTree>();
             _avlTree.Comparer = _avlTree.gameObject.AddComponent<MockComparableElementComparer>();
 
             Debug.Log("=========== Test Setup end ===========");
