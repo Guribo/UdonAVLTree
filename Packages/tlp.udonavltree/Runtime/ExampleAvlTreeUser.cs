@@ -33,7 +33,6 @@ namespace TLP.UdonAVLTree.Runtime
         private int _instantiated;
         #endregion
 
-
         #region Base Overrides
         protected override bool SetupAndValidate() {
             if (!base.SetupAndValidate()) {
@@ -63,7 +62,7 @@ namespace TLP.UdonAVLTree.Runtime
         #endregion
 
         #region Task Implementation
-        protected override TaskResult RunStep() {
+        protected override TaskResult DoTask(float stepDeltaTime) {
             var firstChild = _ownTransform.GetChild(0).gameObject.GetComponent<ExampleSortable>();
             if (_instantiated >= Count) {
                 Destroy(firstChild.gameObject);
@@ -78,6 +77,10 @@ namespace TLP.UdonAVLTree.Runtime
             _instantiated++;
 
             return TaskResult.Unknown;
+        }
+
+        public override int GetNeededSteps() {
+            return Count;
         }
 
         protected override bool InitTask() {
