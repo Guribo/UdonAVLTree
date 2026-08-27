@@ -2,7 +2,6 @@
 
 using JetBrains.Annotations;
 using TLP.UdonUtils.Runtime;
-using TLP.UdonUtils.Runtime.Common;
 using UnityEngine;
 
 namespace TLP.UdonAVLTree.Tests.Runtime
@@ -18,10 +17,10 @@ namespace TLP.UdonAVLTree.Tests.Runtime
         public new const int ExecutionOrder = TlpExecutionOrder.TimeSourcesStart + 1;
         #endregion
 
-        public int valueToCompare;
+        public int ValueToCompare;
 
         public override string ToString() {
-            return valueToCompare.ToString();
+            return ValueToCompare.ToString();
         }
     }
 }

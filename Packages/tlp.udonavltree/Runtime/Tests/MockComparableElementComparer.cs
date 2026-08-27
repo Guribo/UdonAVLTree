@@ -19,13 +19,13 @@ namespace TLP.UdonAVLTree.Tests.Runtime
         public new const int ExecutionOrder = Comparer.ExecutionOrder + 1;
         #endregion
 
-        protected override bool ComparisonImplementation(
+        protected override bool _ComparisonImplementation(
                 UdonSharpBehaviour first,
                 UdonSharpBehaviour second,
                 out int comparisonResult
         ) {
 #if TLP_DEBUG
-            DebugLog(nameof(MockComparableElementComparer));
+            _DebugLog(nameof(MockComparableElementComparer));
 #endif
             comparisonResult = 0;
             if (!Utilities.IsValid(first)) {
@@ -47,7 +47,7 @@ namespace TLP.UdonAVLTree.Tests.Runtime
                 return false;
             }
 
-            comparisonResult = firstMock.valueToCompare.CompareTo(secondMock.valueToCompare);
+            comparisonResult = firstMock.ValueToCompare.CompareTo(secondMock.ValueToCompare);
             return true;
         }
     }

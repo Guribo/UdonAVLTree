@@ -3,12 +3,9 @@ using System.Text;
 using JetBrains.Annotations;
 using TLP.UdonUtils.Runtime;
 using TLP.UdonUtils.Runtime.Common;
-using TLP.UdonUtils.Runtime.Extensions;
 using TLP.UdonUtils.Runtime.Player;
-using TLP.UdonUtils.Runtime.Pool;
 using UdonSharp;
 using UnityEngine;
-using UnityEngine.Serialization;
 using VRC.SDK3.Data;
 using VRC.SDKBase;
 
@@ -26,104 +23,139 @@ namespace TLP.UdonAVLTree.Runtime
     [TlpDefaultExecutionOrder(typeof(AvlTree), ExecutionOrder)]
     public class AvlTree : TlpBaseBehaviour
     {
+        #region ExecutionOrder
         public override int ExecutionOrderReadOnly => ExecutionOrder;
 
         [PublicAPI]
         public new const int ExecutionOrder = PlayerBlackList.ExecutionOrder + 1;
+        #endregion
 
-
-        public int Size { get; internal set; }
-
-        [FormerlySerializedAs("comparer")]
+        #region Dependencies
+        [Header("Dependencies")]
+        [Tooltip(
+                "The comparer used to compare elements in the tree. " +
+                "Must compatible with the UdonsharpBehaviour type managed by the tree.")]
         public Comparer Comparer;
+        #endregion
 
+        #region State
         internal DataList RootNode;
         internal readonly DataList NodePool = new DataList();
 
-        protected override bool SetupAndValidate() {
-            if (!base.SetupAndValidate()) {
+#if TLP_DEBUG
+        private int _debugLastFrame;
+        private int _debugGetCallCount;
+#endif
+        #endregion
+
+        #region Overrides
+        protected override bool _SetupAndValidate() {
+            if (!base._SetupAndValidate()) {
                 return false;
             }
 
-            if (!Utilities.IsValid(Comparer)) {
-                Error($"{nameof(Comparer)} not set");
-                return false;
-            }
-
-            return true;
+            return _IsSet(Comparer, nameof(Comparer));
         }
 
-        public bool Add(TlpBaseBehaviour newElement) {
+        /// <summary>
+        /// Called by the pool just before the instance is returned to the pool.
+        /// Shall be used to reset the state of this instance.
+        /// </summary>
+        [PublicAPI]
+        public override void _OnPrepareForReturnToPool() {
+            #region TLP_DEBUG
 #if TLP_DEBUG
-            DebugLog(nameof(Add));
+            _DebugLog(nameof(_OnPrepareForReturnToPool));
 #endif
+            #endregion
+
+            if (!_Clear()) {
+                Destroy(gameObject);
+                return;
+            }
+
+            gameObject.name = nameof(AvlTree);
+        }
+        #endregion
+
+        #region Public API
+        /// <summary>
+        /// Number of elements in the tree.
+        /// </summary>
+        public int Size { get; internal set; }
+
+        public bool _Add(TlpBaseBehaviour newElement) {
+            #region TLP_DEBUG
+#if TLP_DEBUG
+            _DebugLog($"{nameof(_Add)}: {newElement._GetScriptPathInScene()}");
+#endif
+            #endregion
 
             if (!HasStartedOk) {
-                Error($"{nameof(Add)}: Not initialized");
                 return false;
             }
 
-            var newNode = AvlTreeNodeUtils.CreateNode(NodePool);
-            newNode.SetPayload(newElement);
+            var newNode = AvlTreeNodeUtils._CreateNode(NodePool);
+            newNode._SetPayload(newElement);
 
             var current = RootNode;
 
             while (Utilities.IsValid(current)) {
                 // ReSharper disable once InlineOutVariableDeclaration not supported yet by Udon
                 int comparisonResult;
-                bool comparisonSuccess = Comparer.Compare(newElement, current.GetPayload(), out comparisonResult);
+                bool comparisonSuccess = Comparer._Compare(newElement, current._GetPayload(), out comparisonResult);
                 if (!comparisonSuccess) {
-                    Error("Add failed on comparison");
-                    newNode.ReturnToPool(NodePool);
+                    _Error("Add failed on comparison");
+                    newNode._ReturnToPool(NodePool);
                     return false;
                 }
 
                 if (comparisonResult == -1) {
-                    if (!current.IsLeftValidNode()) {
+                    if (!current._IsLeftValidNode()) {
                         // set parent
-                        newNode.SetParent(current);
+                        newNode._SetParent(current);
 
                         // take of parents left wire
-                        newNode.SetLeft(current.GetLeft());
-                        newNode.SetLeftIsWire(current.LeftIsWire());
+                        newNode._SetLeft(current._GetLeft());
+                        newNode._SetLeftIsWire(current._LeftIsWire());
 
                         // connect the right wire to the parent
-                        newNode.SetRight(current);
-                        newNode.SetRightIsWire(true);
+                        newNode._SetRight(current);
+                        newNode._SetRightIsWire(true);
 
                         // attach to the parents left side
-                        current.SetLeft(newNode);
-                        current.SetLeftIsWire(false);
+                        current._SetLeft(newNode);
+                        current._SetLeftIsWire(false);
 
                         // leave for balancing
                         current = newNode;
                         break;
                     }
 
-                    current = current.GetLeft();
+                    current = current._GetLeft();
                 } else {
-                    if (!current.IsRightValidNode()) {
+                    if (!current._IsRightValidNode()) {
                         // set parent
-                        newNode.SetParent(current);
+                        newNode._SetParent(current);
 
                         // take of parents right wire
-                        newNode.SetRight(current.GetRight());
-                        newNode.SetRightIsWire(current.RightIsWire());
+                        newNode._SetRight(current._GetRight());
+                        newNode._SetRightIsWire(current._RightIsWire());
 
                         // connect the left wire to the parent
-                        newNode.SetLeft(current);
-                        newNode.SetLeftIsWire(true);
+                        newNode._SetLeft(current);
+                        newNode._SetLeftIsWire(true);
 
                         // attach to the parents right side
-                        current.SetRight(newNode);
-                        current.SetRightIsWire(false);
+                        current._SetRight(newNode);
+                        current._SetRightIsWire(false);
 
                         // leave for balancing
                         current = newNode;
                         break;
                     }
 
-                    current = current.GetRight();
+                    current = current._GetRight();
                 }
             }
 
@@ -131,7 +163,7 @@ namespace TLP.UdonAVLTree.Runtime
                 current = newNode;
             }
 
-            Balance(current);
+            _Balance(current);
             Size++;
 
             // if (!VerifyChildrenConnections())
@@ -149,35 +181,40 @@ namespace TLP.UdonAVLTree.Runtime
             return true;
         }
 
-        public bool Remove(UdonSharpBehaviour elementToRemove) {
-            DebugLog(nameof(Remove));
+        public bool _Remove(UdonSharpBehaviour elementToRemove) {
+            #region TLP_DEBUG
+#if TLP_DEBUG
+            _DebugLog($"{nameof(_Remove)}: {elementToRemove._GetScriptPathInScene()}");
+#endif
+            #endregion
+
             if (!Utilities.IsValid(elementToRemove)) {
-                Error(nameof(elementToRemove));
+                _Error(nameof(elementToRemove));
                 return false;
             }
 
-            var nodeToDelete = FindNode(elementToRemove, RootNode);
+            var nodeToDelete = _FindNode(elementToRemove, RootNode);
 
             if (!Utilities.IsValid(nodeToDelete)) {
                 // the value does not exist in tree
-                Warn($"Value {elementToRemove.ToString()} does not exist");
+                _Warn($"Value {elementToRemove} does not exist");
                 return false;
             }
 
-            bool leftValid = nodeToDelete.IsLeftValidNode();
-            bool rightValid = nodeToDelete.IsRightValidNode();
+            bool leftValid = nodeToDelete._IsLeftValidNode();
+            bool rightValid = nodeToDelete._IsRightValidNode();
 
             DataList balanceStart = null;
             if (!rightValid && !leftValid) {
-                balanceStart = RemoveLeafNode(nodeToDelete);
-            } else if (nodeToDelete.GetBalance() < 0) {
-                balanceStart = RemoveRootNodeOfLeftHeavyTree(nodeToDelete, false);
+                balanceStart = _RemoveLeafNode(nodeToDelete);
+            } else if (nodeToDelete._GetBalance() < 0) {
+                balanceStart = _RemoveRootNodeOfLeftHeavyTree(nodeToDelete, false);
             } else {
-                balanceStart = RemoveRootNodeOfLeftHeavyTree(nodeToDelete, true);
+                balanceStart = _RemoveRootNodeOfLeftHeavyTree(nodeToDelete, true);
             }
 
             if (Utilities.IsValid(balanceStart)) {
-                Balance(balanceStart);
+                _Balance(balanceStart);
             } else {
                 RootNode = null;
             }
@@ -186,6 +223,7 @@ namespace TLP.UdonAVLTree.Runtime
 
             return true;
         }
+
 
 #if !COMPILER_UDONSHARP && UNITY_EDITOR
 
@@ -326,407 +364,47 @@ namespace TLP.UdonAVLTree.Runtime
 #endif
 
         [PublicAPI]
-        public UdonSharpBehaviour Contains(UdonSharpBehaviour searchElement) {
-            DebugLog(nameof(Contains));
-            var avlTreeNode = FindNode(searchElement, RootNode);
+        public UdonSharpBehaviour _Contains(UdonSharpBehaviour searchElement) {
+            #region TLP_DEBUG
+#if TLP_DEBUG
+            _DebugLog($"{nameof(_Contains)}: {searchElement._GetScriptPathInScene()}");
+#endif
+            #endregion
+
+            var avlTreeNode = _FindNode(searchElement, RootNode);
             if (Utilities.IsValid(avlTreeNode)) {
-                return avlTreeNode.GetPayload();
+                return avlTreeNode._GetPayload();
             }
 
             return null;
         }
 
 
-        internal DataList FindNode(UdonSharpBehaviour searchElement, DataList start) {
-            if (!Utilities.IsValid(Comparer)) {
-                Error($"{nameof(Comparer)} invalid");
-                return null;
-            }
-
-            while (true) {
-                if (!Utilities.IsValid(start)) {
-                    // node not found, first exit point
-                    return null;
-                }
-
-                // ReSharper disable once InlineOutVariableDeclaration not supported yet by Udon
-                int comparisonResult;
-
-                // ReSharper disable once PossibleNullReferenceException False positive, see Utilities.IsValid(start)
-                bool comparisonSuccess = Comparer.Compare(searchElement, start.GetPayload(), out comparisonResult);
-                if (!comparisonSuccess) {
-                    Error($"Comparison failed when looking for Node '{searchElement.GetScriptPathInScene()}' using comparer '{Comparer.GetScriptPathInScene()}'");
-
-                    // second exit point
-                    return null;
-                }
-
-                if (comparisonResult == 0) {
-                    // entry found, third exit point
-                    return start;
-                }
-
-                if (comparisonResult < 0) {
-                    start = start.IsLeftValidNode() ? start.GetLeft() : null;
-                } else {
-                    start = start.IsRightValidNode() ? start.GetRight() : null;
-                }
-            }
-        }
-
-
-        private DataList RemoveLeafNode(DataList nodeToDelete) {
-            var successor = nodeToDelete.GetParent();
-            if (Utilities.IsValid(successor)) {
-                if (ReferenceEquals(successor.GetLeft(), nodeToDelete)) {
-                    successor.SetLeft(nodeToDelete.GetLeft());
-                    successor.SetLeftIsWire(nodeToDelete.LeftIsWire());
-                } else {
-                    successor.SetRight(nodeToDelete.GetRight());
-                    successor.SetRightIsWire(nodeToDelete.RightIsWire());
-                }
-            } else {
-                RootNode = null;
-            }
-
-            nodeToDelete.ReturnToPool(NodePool);
-            return successor;
-        }
-
-        internal DataList RemoveRootNodeOfRightHeavyTree(DataList toRemove) {
-            var successor = AvlTreeNodeUtils.GetFirst(toRemove.GetRight());
-
-            DataList balancingStart;
-
-            bool successorHasLeftChildren = !ReferenceEquals(successor, toRemove.GetRight());
-            if (successorHasLeftChildren) {
-                balancingStart = successor.GetParent();
-
-                if (successor.IsRightValidNode()) {
-                    // attach child of successor to parent of successor
-                    var childOfSuccessor = successor.GetRight();
-
-                    if (!ReferenceEquals(balancingStart, childOfSuccessor)) {
-                        balancingStart.SetLeft(childOfSuccessor);
-                        childOfSuccessor.SetParent(balancingStart);
-                    }
-                } else {
-                    // connect the right tree wire to the new root
-                    balancingStart.SetLeft(successor);
-                    balancingStart.SetLeftIsWire(true);
-                }
-
-                successor.SetRight(toRemove.GetRight());
-                successor.SetRightIsWire(false);
-
-                successor.SetParent(toRemove.GetParent());
-
-                toRemove.GetLeft().SetParent(successor);
-                successor.SetLeft(toRemove.GetLeft());
-                successor.SetLeftIsWire(false);
-
-                toRemove.GetRight().SetParent(successor);
-            } else {
-                balancingStart = successor;
-
-                successor.SetParent(toRemove.GetParent());
-
-                toRemove.GetLeft().SetParent(successor);
-                successor.SetLeft(toRemove.GetLeft());
-                successor.SetLeftIsWire(false);
-            }
-
-            // connect the right trees wire to the new root
-            AvlTreeNodeUtils.GetLast(successor.GetLeft()).SetRight(successor);
-            AvlTreeNodeUtils.GetLast(successor.GetLeft()).SetRightIsWire(true);
-
-            if (Utilities.IsValid(toRemove.GetParent())) {
-                if (ReferenceEquals(toRemove.GetParent().GetLeft(), toRemove)) {
-                    toRemove.GetParent().SetLeft(successor);
-
-                    var mostRight = AvlTreeNodeUtils.GetLast(successor);
-                    mostRight.SetRight(toRemove.GetParent());
-                    mostRight.SetRightIsWire(true);
-                } else {
-                    toRemove.GetParent().SetRight(successor);
-                    var mostLeft = AvlTreeNodeUtils.GetFirst(successor);
-                    mostLeft.SetLeft(toRemove.GetParent());
-                    mostLeft.SetLeftIsWire(true);
-                }
-            } else {
-                var mostLeft = AvlTreeNodeUtils.GetFirst(successor);
-                mostLeft.SetLeft(null);
-                mostLeft.SetLeftIsWire(false);
-
-                var mostRight = AvlTreeNodeUtils.GetLast(successor);
-                mostRight.SetRight(null);
-                mostRight.SetRightIsWire(false);
-            }
-
-            RootNode = balancingStart;
-            while (Utilities.IsValid(RootNode.GetParent())) {
-                RootNode = RootNode.GetParent();
-            }
-
-            toRemove.ReturnToPool(NodePool);
-            return balancingStart;
-        }
-
-        /// <summary>
-        /// given a node that is the root of a (sub-) tree it replaces it with the
-        /// single left child. Must only have a single node in the left side!
-        /// </summary>
-        /// <param name="root"></param>
-        /// <returns></returns>
-        internal DataList ReplaceRootWithLeftChild(DataList root) {
-            if (root.IsRightValidNode()) {
-                var minRight = AvlTreeNodeUtils.GetFirst(root.GetRight());
-
-                root.GetRight().SetParent(root.GetLeft());
-
-                minRight.SetLeft(root.GetLeft());
-                minRight.SetLeftIsWire(true);
-            }
-
-            root.GetLeft().SetParent(root.GetParent());
-
-
-            root.GetLeft().SetRight(root.GetRight());
-            root.GetLeft().SetRightIsWire(root.RightIsWire());
-
-            if (ReferenceEquals(root, RootNode)) {
-                RootNode = root.GetLeft();
-            } else {
-                if (ReferenceEquals(root.GetParent().GetLeft(), root)) {
-                    root.GetParent().SetLeft(root.GetLeft());
-                } else {
-                    root.GetParent().SetRight(root.GetLeft());
-                }
-            }
-
-            return root.GetLeft();
-        }
-
-
-        internal DataList ReplaceRootWithRightChild(DataList root) {
-            if (root.IsLeftValidNode()) {
-                var maxLeft = AvlTreeNodeUtils.GetLast(root.GetLeft());
-
-                root.GetLeft().SetParent(root.GetRight());
-
-                maxLeft.SetRight(root.GetRight());
-                maxLeft.SetRightIsWire(true);
-            }
-
-            root.GetRight().SetParent(root.GetParent());
-
-            root.GetRight().SetLeft(root.GetLeft());
-            root.GetRight().SetLeftIsWire(root.LeftIsWire());
-
-            if (ReferenceEquals(root, RootNode)) {
-                RootNode = root.GetRight();
-            } else {
-                if (ReferenceEquals(root.GetParent().GetRight(), root)) {
-                    root.GetParent().SetRight(root.GetRight());
-                } else {
-                    root.GetParent().SetLeft(root.GetRight());
-                }
-            }
-
-            return root.GetRight();
-        }
-
-        /// <summary>
-        /// B -> C
-        ///     C
-        ///   B   (?)
-        /// A    (?)
-        /// </summary>
-        /// <param name="root"></param>
-        /// <returns></returns>
-        internal DataList ReplaceRootWithLeftTreeLeftHeavy(DataList root) {
-            var maxLeftTree = AvlTreeNodeUtils.GetLast(root.GetLeft());
-            var minRightTree = AvlTreeNodeUtils.GetFirst(root.GetRight());
-
-            if (maxLeftTree.IsLeftValidNode()) {
-                maxLeftTree.RotateRight();
-            }
-
-            var balancingStartNode = maxLeftTree.GetParent();
-
-            maxLeftTree.SetParent(root.GetParent());
-
-            maxLeftTree.SetLeft(root.GetLeft());
-            maxLeftTree.SetLeftIsWire(false);
-
-
-            maxLeftTree.SetRight(root.GetRight());
-            maxLeftTree.SetRightIsWire(root.RightIsWire());
-
-            minRightTree.SetLeft(maxLeftTree);
-
-            root.GetRight().SetParent(maxLeftTree);
-
-            if (ReferenceEquals(balancingStartNode, root.GetLeft())) {
-                balancingStartNode.SetParent(maxLeftTree);
-            }
-
-            balancingStartNode.SetRightIsWire(true);
-            ;
-
-
-            root.GetLeft().SetParent(maxLeftTree);
-
-            if (Utilities.IsValid(root.GetParent())) {
-                if (ReferenceEquals(root.GetParent().GetLeft(), root)) {
-                    root.GetParent().SetLeft(maxLeftTree);
-                } else {
-                    root.GetParent().SetRight(maxLeftTree);
-                }
-            }
-
-            return balancingStartNode;
-        }
-
-
-        internal DataList ReplaceRootWithRightTreeRightHeavy(DataList root) {
-            var minRightTree = AvlTreeNodeUtils.GetFirst(root.GetRight());
-            var maxLeftTree = AvlTreeNodeUtils.GetLast(root.GetLeft());
-
-            if (minRightTree.IsRightValidNode()) {
-                minRightTree.RotateLeft();
-            }
-
-            var balancingStartNode = minRightTree.GetParent();
-
-            minRightTree.SetParent(root.GetParent());
-
-            minRightTree.SetRight(root.GetRight());
-            minRightTree.SetRightIsWire(false);
-
-
-            minRightTree.SetLeft(root.GetLeft());
-            minRightTree.SetLeftIsWire(root.LeftIsWire());
-
-            maxLeftTree.SetRight(minRightTree);
-
-            root.GetLeft().SetParent(minRightTree);
-
-            if (ReferenceEquals(balancingStartNode, root.GetRight())) {
-                balancingStartNode.SetParent(minRightTree);
-            }
-
-            balancingStartNode.SetLeftIsWire(true);
-
-
-            root.GetRight().SetParent(minRightTree);
-
-            if (Utilities.IsValid(root.GetParent())) {
-                if (ReferenceEquals(root.GetParent().GetRight(), root)) {
-                    root.GetParent().SetRight(minRightTree);
-                } else {
-                    root.GetParent().SetLeft(minRightTree);
-                }
-            }
-
-            return balancingStartNode;
-        }
-
-
-        internal DataList RemoveRootNodeOfLeftHeavyTree(DataList toRemove, bool isLeft) {
-            var successor = isLeft
-                    ? AvlTreeNodeUtils.GetLast(toRemove.GetLeft())
-                    : AvlTreeNodeUtils.GetFirst(toRemove.GetRight());
-
-            // left/right child has no right/left child
-            if (isLeft
-                        ? ReferenceEquals(successor, toRemove.GetLeft())
-                        : ReferenceEquals(successor, toRemove.GetRight())) {
-                successor = isLeft
-                        ? ReplaceRootWithLeftChild(toRemove)
-                        : ReplaceRootWithRightChild(toRemove);
-            } else {
-                successor = isLeft
-                        ? ReplaceRootWithLeftTreeLeftHeavy(toRemove)
-                        : ReplaceRootWithRightTreeRightHeavy(toRemove);
-            }
-
-            toRemove.ReturnToPool(NodePool);
-            return successor;
-        }
-
-#if !COMPILER_UDONSHARP && UNITY_EDITOR
-
-        private bool CheckForCyclicParentRelations(DataList tmp) {
-            var visited = new HashSet<DataList>();
-            while (Utilities.IsValid(tmp)) {
-                if (!visited.Add(tmp)) {
-                    Error(tmp.PayloadToString() + "Already visited");
-                    return true;
-                }
-
-                tmp = tmp.GetParent();
-            }
-
-            return false;
-        }
+        public StringBuilder _Display(DataList cur, int depth = 0, int state = 0, StringBuilder sb = null) {
+            #region TLP_DEBUG
+#if TLP_DEBUG
+            _DebugLog(nameof(_Display));
 #endif
+            #endregion
 
-
-        private void Balance(DataList begin) {
-            for (var current = begin; Utilities.IsValid(current); current = current.GetParent()) {
-                RootNode = current;
-                current.UpdateValues();
-
-                if (current.GetBalance() >= 2 && current.GetLeft().GetBalance() >= 0) // left - left
-                {
-                    current = current.RotateRight();
-                    RootNode = current;
-                } else if (current.GetBalance() >= 2) {
-                    // left - right
-                    current.SetLeft(current.GetLeft().RotateLeft());
-                    current = current.RotateRight();
-                    RootNode = current;
-                } else if (current.GetBalance() <= -2 && current.GetRight().GetBalance() <= 0) // right - right
-                {
-                    current = current.RotateLeft();
-                    RootNode = current;
-                } else if (current.GetBalance() <= -2) {
-                    // right - left
-                    current.SetRight(current.GetRight().RotateRight());
-                    current = current.RotateLeft();
-                    RootNode = current;
-                }
-            }
-
-            if (!Utilities.IsValid(RootNode)) {
-                Info("Tree is empty, nothing to balance");
-            }
-        }
-
-        public override string ToString() {
-            return Utilities.IsValid(RootNode) ? RootNode.ToStringWithChildren() : "Empty";
-        }
-
-        public StringBuilder Display(DataList cur, int depth = 0, int state = 0, StringBuilder sb = null) {
             if (sb == null) {
                 sb = new StringBuilder();
             }
 
             if (!Utilities.IsValid(cur)) {
-                Warn("Invalid node");
+                _Warn($"{nameof(_Display)}: Invalid node");
                 return sb;
             }
 
             // state: 1 -> left, 2 -> right , 0 -> root
-            if (cur.IsLeftValidNode()) {
-                sb = Display(cur.GetLeft(), depth + 1, 1, sb);
+            if (cur._IsLeftValidNode()) {
+                sb = _Display(cur._GetLeft(), depth + 1, 1, sb);
             }
 
             int count = 0;
             for (int i = 0; i < depth; i++) {
                 if (count++ > 1000) {
-                    Error("Balance: Potential endless loop detected");
+                    _Error("Balance: Potential endless loop detected");
                     return sb;
                 }
 
@@ -742,50 +420,56 @@ namespace TLP.UdonAVLTree.Runtime
             }
 
             sb.Append("[")
-                    .Append(cur.PayloadToString())
+                    .Append(cur._PayloadToString())
                     .Append("](")
-                    .Append(cur.GetNodeCount().ToString())
+                    .Append(cur._GetNodeCount().ToString())
                     .Append(", ")
-                    .Append(cur.GetTreeHeight())
+                    .Append(cur._GetTreeHeight())
                     .Append(", ")
-                    .Append(cur.GetBalance())
+                    .Append(cur._GetBalance())
                     .Append(")");
 
 
-            if (!cur.IsLeftValidNode()) {
-                sb.Append(" lW=" + (Utilities.IsValid(cur.GetLeft()) ? cur.GetLeft().PayloadToString() : "null"));
+            if (!cur._IsLeftValidNode()) {
+                sb.Append(" lW=" + (Utilities.IsValid(cur._GetLeft()) ? cur._GetLeft()._PayloadToString() : "null"));
             }
 
-            if (!cur.IsRightValidNode()) {
-                sb.Append(" rW=" + (Utilities.IsValid(cur.GetRight()) ? cur.GetRight().PayloadToString() : "null"));
+            if (!cur._IsRightValidNode()) {
+                sb.Append(" rW=" + (Utilities.IsValid(cur._GetRight()) ? cur._GetRight()._PayloadToString() : "null"));
             }
 
             sb.Append("\n");
 
-            if (cur.IsRightValidNode()) {
-                sb = Display(cur.GetRight(), depth + 1, 2, sb);
+            if (cur._IsRightValidNode()) {
+                sb = _Display(cur._GetRight(), depth + 1, 2, sb);
             }
 
             return sb;
         }
 
-        private int m_LastFrame;
-        private int m_GetCallCount;
 
-        public TlpBaseBehaviour Get(int index) {
+        public TlpBaseBehaviour _Get(int index) {
+            #region TLP_DEBUG
 #if TLP_DEBUG
-            DebugLog(nameof(Get));
+            _DebugLog($"{nameof(_Get)}: {index}");
 #endif
+            #endregion
+
+#if TLP_DEBUG
             int frame = Time.renderedFrameCount;
-            if (frame != m_LastFrame) {
-                m_LastFrame = frame;
-                if (m_GetCallCount > 0) {
-                    DebugLog($"Get was called {m_GetCallCount} times");
-                    m_GetCallCount = 0;
+            if (frame != _debugLastFrame) {
+                _debugLastFrame = frame;
+                if (_debugGetCallCount > 0) {
+                    #region TLP_DEBUG
+                    _DebugLog($"Get was called {_debugGetCallCount} times");
+                    #endregion
+
+                    _debugGetCallCount = 0;
                 }
             }
 
-            ++m_GetCallCount;
+            ++_debugGetCallCount;
+#endif
 
 
             if (index < 0 || index >= Size) {
@@ -793,58 +477,45 @@ namespace TLP.UdonAVLTree.Runtime
             }
 
             var current = RootNode;
-            int left = current.IsLeftValidNode() ? current.GetLeft().GetNodeCount() : 0;
+            int left = current._IsLeftValidNode() ? current._GetLeft()._GetNodeCount() : 0;
 
             while (left != index) {
                 if (left < index) {
                     index -= left + 1;
 
-                    current = current.GetRight();
-                    left = current.IsLeftValidNode() ? current.GetLeft().GetNodeCount() : 0;
+                    current = current._GetRight();
+                    left = current._IsLeftValidNode() ? current._GetLeft()._GetNodeCount() : 0;
                 } else {
-                    current = current.GetLeft();
-                    left = current.IsLeftValidNode() ? current.GetLeft().GetNodeCount() : 0;
+                    current = current._GetLeft();
+                    left = current._IsLeftValidNode() ? current._GetLeft()._GetNodeCount() : 0;
                 }
             }
 
-            return current.GetPayload();
+            return current._GetPayload();
         }
 
-        public bool IsEmpty() {
+        public bool _IsEmpty() {
             return Size < 1;
         }
 
-        #region Pool
-        /// <summary>
-        /// Called by the pool just before the instance is returned to the pool.
-        /// Shall be used to reset the state of this instance.
-        /// </summary>
-        [PublicAPI]
-        public override void OnPrepareForReturnToPool() {
+
+        public bool _Clear() {
             #region TLP_DEBUG
 #if TLP_DEBUG
-            DebugLog(nameof(OnPrepareForReturnToPool));
+            _DebugLog(nameof(_Clear));
 #endif
-#endregion
-            if (!Clear()) {
-                Destroy(gameObject);
-                return;
-            }
-            gameObject.name = nameof(AvlTree);
-        }
-        #endregion
+            #endregion
 
-        public bool Clear() {
             int size = Size;
             for (int i = 0; i < size; i++) {
-                if (!Remove(Get(0))) {
-                    Error($"{nameof(Clear)}: Failed to remove first element");
+                if (!_Remove(_Get(0))) {
+                    _Error($"{nameof(_Clear)}: Failed to remove first element");
                     return false;
                 }
             }
 
             if (Size != 0) {
-                Error($"{nameof(Clear)}: Failed to clear the {this.GetScriptPathInScene()}");
+                _Error($"{nameof(_Clear)}: Failed to clear the {this._GetScriptPathInScene()}");
                 return false;
             }
 
@@ -852,5 +523,382 @@ namespace TLP.UdonAVLTree.Runtime
             NodePool.Clear();
             return true;
         }
+
+        public override string ToString() {
+            return Utilities.IsValid(RootNode) ? RootNode._ToStringWithChildren() : "Empty";
+        }
+        #endregion
+
+        #region Internal
+        internal DataList _FindNode(UdonSharpBehaviour searchElement, DataList start) {
+            if (!Utilities.IsValid(Comparer)) {
+                _Error($"{nameof(Comparer)} invalid");
+                return null;
+            }
+
+            while (true) {
+                if (!Utilities.IsValid(start)) {
+                    // node not found, first exit point
+                    return null;
+                }
+
+                // ReSharper disable once InlineOutVariableDeclaration not supported yet by Udon
+                int comparisonResult;
+
+                // ReSharper disable once PossibleNullReferenceException False positive, see Utilities.IsValid(start)
+                bool comparisonSuccess = Comparer._Compare(searchElement, start._GetPayload(), out comparisonResult);
+                if (!comparisonSuccess) {
+                    _Error(
+                            $"Comparison failed when looking for Node '{searchElement._GetScriptPathInScene()}' using comparer '{Comparer._GetScriptPathInScene()}'");
+
+                    // second exit point
+                    return null;
+                }
+
+                if (comparisonResult == 0) {
+                    // entry found, third exit point
+                    return start;
+                }
+
+                if (comparisonResult < 0) {
+                    start = start._IsLeftValidNode() ? start._GetLeft() : null;
+                } else {
+                    start = start._IsRightValidNode() ? start._GetRight() : null;
+                }
+            }
+        }
+
+
+        private DataList _RemoveLeafNode(DataList nodeToDelete) {
+            var successor = nodeToDelete._GetParent();
+            if (Utilities.IsValid(successor)) {
+                if (ReferenceEquals(successor._GetLeft(), nodeToDelete)) {
+                    successor._SetLeft(nodeToDelete._GetLeft());
+                    successor._SetLeftIsWire(nodeToDelete._LeftIsWire());
+                } else {
+                    successor._SetRight(nodeToDelete._GetRight());
+                    successor._SetRightIsWire(nodeToDelete._RightIsWire());
+                }
+            } else {
+                RootNode = null;
+            }
+
+            nodeToDelete._ReturnToPool(NodePool);
+            return successor;
+        }
+
+        internal DataList _RemoveRootNodeOfRightHeavyTree(DataList toRemove) {
+            var successor = AvlTreeNodeUtils._GetFirst(toRemove._GetRight());
+
+            DataList balancingStart;
+
+            bool successorHasLeftChildren = !ReferenceEquals(successor, toRemove._GetRight());
+            if (successorHasLeftChildren) {
+                balancingStart = successor._GetParent();
+
+                if (successor._IsRightValidNode()) {
+                    // attach child of successor to parent of successor
+                    var childOfSuccessor = successor._GetRight();
+
+                    if (!ReferenceEquals(balancingStart, childOfSuccessor)) {
+                        balancingStart._SetLeft(childOfSuccessor);
+                        childOfSuccessor._SetParent(balancingStart);
+                    }
+                } else {
+                    // connect the right tree wire to the new root
+                    balancingStart._SetLeft(successor);
+                    balancingStart._SetLeftIsWire(true);
+                }
+
+                successor._SetRight(toRemove._GetRight());
+                successor._SetRightIsWire(false);
+
+                successor._SetParent(toRemove._GetParent());
+
+                toRemove._GetLeft()._SetParent(successor);
+                successor._SetLeft(toRemove._GetLeft());
+                successor._SetLeftIsWire(false);
+
+                toRemove._GetRight()._SetParent(successor);
+            } else {
+                balancingStart = successor;
+
+                successor._SetParent(toRemove._GetParent());
+
+                toRemove._GetLeft()._SetParent(successor);
+                successor._SetLeft(toRemove._GetLeft());
+                successor._SetLeftIsWire(false);
+            }
+
+            // connect the right trees wire to the new root
+            AvlTreeNodeUtils._GetLast(successor._GetLeft())._SetRight(successor);
+            AvlTreeNodeUtils._GetLast(successor._GetLeft())._SetRightIsWire(true);
+
+            if (Utilities.IsValid(toRemove._GetParent())) {
+                if (ReferenceEquals(toRemove._GetParent()._GetLeft(), toRemove)) {
+                    toRemove._GetParent()._SetLeft(successor);
+
+                    var mostRight = AvlTreeNodeUtils._GetLast(successor);
+                    mostRight._SetRight(toRemove._GetParent());
+                    mostRight._SetRightIsWire(true);
+                } else {
+                    toRemove._GetParent()._SetRight(successor);
+                    var mostLeft = AvlTreeNodeUtils._GetFirst(successor);
+                    mostLeft._SetLeft(toRemove._GetParent());
+                    mostLeft._SetLeftIsWire(true);
+                }
+            } else {
+                var mostLeft = AvlTreeNodeUtils._GetFirst(successor);
+                mostLeft._SetLeft(null);
+                mostLeft._SetLeftIsWire(false);
+
+                var mostRight = AvlTreeNodeUtils._GetLast(successor);
+                mostRight._SetRight(null);
+                mostRight._SetRightIsWire(false);
+            }
+
+            RootNode = balancingStart;
+            while (Utilities.IsValid(RootNode._GetParent())) {
+                RootNode = RootNode._GetParent();
+            }
+
+            toRemove._ReturnToPool(NodePool);
+            return balancingStart;
+        }
+
+        /// <summary>
+        /// given a node that is the root of a (sub-) tree it replaces it with the
+        /// single left child. Must only have a single node in the left side!
+        /// </summary>
+        /// <param name="root"></param>
+        /// <returns></returns>
+        internal DataList _ReplaceRootWithLeftChild(DataList root) {
+            if (root._IsRightValidNode()) {
+                var minRight = AvlTreeNodeUtils._GetFirst(root._GetRight());
+
+                root._GetRight()._SetParent(root._GetLeft());
+
+                minRight._SetLeft(root._GetLeft());
+                minRight._SetLeftIsWire(true);
+            }
+
+            root._GetLeft()._SetParent(root._GetParent());
+
+
+            root._GetLeft()._SetRight(root._GetRight());
+            root._GetLeft()._SetRightIsWire(root._RightIsWire());
+
+            if (ReferenceEquals(root, RootNode)) {
+                RootNode = root._GetLeft();
+            } else {
+                if (ReferenceEquals(root._GetParent()._GetLeft(), root)) {
+                    root._GetParent()._SetLeft(root._GetLeft());
+                } else {
+                    root._GetParent()._SetRight(root._GetLeft());
+                }
+            }
+
+            return root._GetLeft();
+        }
+
+
+        internal DataList _ReplaceRootWithRightChild(DataList root) {
+            if (root._IsLeftValidNode()) {
+                var maxLeft = AvlTreeNodeUtils._GetLast(root._GetLeft());
+
+                root._GetLeft()._SetParent(root._GetRight());
+
+                maxLeft._SetRight(root._GetRight());
+                maxLeft._SetRightIsWire(true);
+            }
+
+            root._GetRight()._SetParent(root._GetParent());
+
+            root._GetRight()._SetLeft(root._GetLeft());
+            root._GetRight()._SetLeftIsWire(root._LeftIsWire());
+
+            if (ReferenceEquals(root, RootNode)) {
+                RootNode = root._GetRight();
+            } else {
+                if (ReferenceEquals(root._GetParent()._GetRight(), root)) {
+                    root._GetParent()._SetRight(root._GetRight());
+                } else {
+                    root._GetParent()._SetLeft(root._GetRight());
+                }
+            }
+
+            return root._GetRight();
+        }
+
+        /// <summary>
+        /// B -> C
+        ///     C
+        ///   B   (?)
+        /// A    (?)
+        /// </summary>
+        /// <param name="root"></param>
+        /// <returns></returns>
+        internal DataList _ReplaceRootWithLeftTreeLeftHeavy(DataList root) {
+            var maxLeftTree = AvlTreeNodeUtils._GetLast(root._GetLeft());
+            var minRightTree = AvlTreeNodeUtils._GetFirst(root._GetRight());
+
+            if (maxLeftTree._IsLeftValidNode()) {
+                maxLeftTree._RotateRight();
+            }
+
+            var balancingStartNode = maxLeftTree._GetParent();
+
+            maxLeftTree._SetParent(root._GetParent());
+
+            maxLeftTree._SetLeft(root._GetLeft());
+            maxLeftTree._SetLeftIsWire(false);
+
+
+            maxLeftTree._SetRight(root._GetRight());
+            maxLeftTree._SetRightIsWire(root._RightIsWire());
+
+            minRightTree._SetLeft(maxLeftTree);
+
+            root._GetRight()._SetParent(maxLeftTree);
+
+            if (ReferenceEquals(balancingStartNode, root._GetLeft())) {
+                balancingStartNode._SetParent(maxLeftTree);
+            }
+
+            balancingStartNode._SetRightIsWire(true);
+
+            root._GetLeft()._SetParent(maxLeftTree);
+
+            if (Utilities.IsValid(root._GetParent())) {
+                if (ReferenceEquals(root._GetParent()._GetLeft(), root)) {
+                    root._GetParent()._SetLeft(maxLeftTree);
+                } else {
+                    root._GetParent()._SetRight(maxLeftTree);
+                }
+            }
+
+            return balancingStartNode;
+        }
+
+
+        internal DataList _ReplaceRootWithRightTreeRightHeavy(DataList root) {
+            var minRightTree = AvlTreeNodeUtils._GetFirst(root._GetRight());
+            var maxLeftTree = AvlTreeNodeUtils._GetLast(root._GetLeft());
+
+            if (minRightTree._IsRightValidNode()) {
+                minRightTree._RotateLeft();
+            }
+
+            var balancingStartNode = minRightTree._GetParent();
+
+            minRightTree._SetParent(root._GetParent());
+
+            minRightTree._SetRight(root._GetRight());
+            minRightTree._SetRightIsWire(false);
+
+
+            minRightTree._SetLeft(root._GetLeft());
+            minRightTree._SetLeftIsWire(root._LeftIsWire());
+
+            maxLeftTree._SetRight(minRightTree);
+
+            root._GetLeft()._SetParent(minRightTree);
+
+            if (ReferenceEquals(balancingStartNode, root._GetRight())) {
+                balancingStartNode._SetParent(minRightTree);
+            }
+
+            balancingStartNode._SetLeftIsWire(true);
+
+
+            root._GetRight()._SetParent(minRightTree);
+
+            if (Utilities.IsValid(root._GetParent())) {
+                if (ReferenceEquals(root._GetParent()._GetRight(), root)) {
+                    root._GetParent()._SetRight(minRightTree);
+                } else {
+                    root._GetParent()._SetLeft(minRightTree);
+                }
+            }
+
+            return balancingStartNode;
+        }
+
+
+        internal DataList _RemoveRootNodeOfLeftHeavyTree(DataList toRemove, bool isLeft) {
+            var successor = isLeft
+                    ? AvlTreeNodeUtils._GetLast(toRemove._GetLeft())
+                    : AvlTreeNodeUtils._GetFirst(toRemove._GetRight());
+
+            // left/right child has no right/left child
+            if (isLeft
+                        ? ReferenceEquals(successor, toRemove._GetLeft())
+                        : ReferenceEquals(successor, toRemove._GetRight())) {
+                successor = isLeft
+                        ? _ReplaceRootWithLeftChild(toRemove)
+                        : _ReplaceRootWithRightChild(toRemove);
+            } else {
+                successor = isLeft
+                        ? _ReplaceRootWithLeftTreeLeftHeavy(toRemove)
+                        : _ReplaceRootWithRightTreeRightHeavy(toRemove);
+            }
+
+            toRemove._ReturnToPool(NodePool);
+            return successor;
+        }
+
+#if !COMPILER_UDONSHARP && UNITY_EDITOR
+
+        private bool _CheckForCyclicParentRelations(DataList tmp) {
+            var visited = new HashSet<DataList>();
+            while (Utilities.IsValid(tmp)) {
+                if (!visited.Add(tmp)) {
+                    _Error(tmp._PayloadToString() + "Already visited");
+                    return true;
+                }
+
+                tmp = tmp._GetParent();
+            }
+
+            return false;
+        }
+#endif
+
+
+        private void _Balance(DataList begin) {
+            for (var current = begin; Utilities.IsValid(current); current = current._GetParent()) {
+                RootNode = current;
+                current._UpdateValues();
+
+                if (current._GetBalance() >= 2 && current._GetLeft()._GetBalance() >= 0) // left - left
+                {
+                    current = current._RotateRight();
+                    RootNode = current;
+                } else if (current._GetBalance() >= 2) {
+                    // left - right
+                    current._SetLeft(current._GetLeft()._RotateLeft());
+                    current = current._RotateRight();
+                    RootNode = current;
+                } else if (current._GetBalance() <= -2 && current._GetRight()._GetBalance() <= 0) // right - right
+                {
+                    current = current._RotateLeft();
+                    RootNode = current;
+                } else if (current._GetBalance() <= -2) {
+                    // right - left
+                    current._SetRight(current._GetRight()._RotateRight());
+                    current = current._RotateLeft();
+                    RootNode = current;
+                }
+            }
+
+            if (!Utilities.IsValid(RootNode)) {
+                #region TLP_DEBUG
+#if TLP_DEBUG
+                _DebugLog("Tree is empty, nothing to balance");
+#endif
+                #endregion
+            }
+        }
+        #endregion
     }
 }

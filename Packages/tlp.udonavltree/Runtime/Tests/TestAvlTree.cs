@@ -4,11 +4,10 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using NUnit.Framework;
 using TLP.UdonAVLTree.Runtime;
-//using TLP.UdonLeaderBoard.Tests.Editor;
 using TLP.UdonUtils.Editor.Tests;
-using TLP.UdonUtils.Runtime.Pool;
 using UnityEngine;
 using UnityEngine.TestTools;
+//using TLP.UdonLeaderBoard.Tests.Editor;
 using Debug = UnityEngine.Debug;
 using Random = UnityEngine.Random;
 
@@ -19,9 +18,9 @@ namespace TLP.UdonAVLTree.Tests.Runtime
         private AvlTree _avlTree;
 
         [SetUp]
-        public override void Setup()
+        public override void _Setup()
         {
-            base.Setup();
+            base._Setup();
             var avlTreeRoot = new GameObject("AVLTreeRoot");
             _avlTree = avlTreeRoot.AddComponent<AvlTree>();
             _avlTree.Comparer = _avlTree.gameObject.AddComponent<MockComparableElementComparer>();
@@ -53,7 +52,7 @@ namespace TLP.UdonAVLTree.Tests.Runtime
                     } while (used.Contains(value));
 
                     var mockComparableElement = new GameObject().AddComponent<MockComparableElement>();
-                    mockComparableElement.valueToCompare = value;
+                    mockComparableElement.ValueToCompare = value;
                     mockComparableElement.transform.parent = root.transform;
                     gos.Add(mockComparableElement);
                     used.Add(value);
@@ -90,7 +89,7 @@ namespace TLP.UdonAVLTree.Tests.Runtime
                     yield return new WaitForEndOfFrame();
                 }
 
-                _avlTree.Add(go);
+                _avlTree._Add(go);
                 ++cnt;
             }
 

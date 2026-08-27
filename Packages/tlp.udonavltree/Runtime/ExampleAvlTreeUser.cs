@@ -20,11 +20,14 @@ namespace TLP.UdonAVLTree.Runtime
         public new const int ExecutionOrder = AvlTree.ExecutionOrder + 1;
         #endregion
 
+        #region Dependencies
         public AvlTree AvlTree;
+        #endregion
 
+        #region State
         private Transform _ownTransform;
-
         public int Count = 10000;
+        #endregion
 
         #region State
         private int _i;
@@ -34,65 +37,56 @@ namespace TLP.UdonAVLTree.Runtime
         #endregion
 
         #region Base Overrides
-        protected override bool SetupAndValidate() {
-            if (!base.SetupAndValidate()) {
+        protected override bool _SetupAndValidate() {
+            if (!base._SetupAndValidate()) {
                 return false;
             }
 
             _ownTransform = transform;
-            return TaskScheduler.AddTaskToDefaultScheduler(this, this);
-        }
-
-        public override void OnEvent(string eventName) {
-            switch (eventName) {
-                case "OnTaskFinished":
-
-                    #region TLP_DEBUG
-#if TLP_DEBUG
-                    DebugLog_OnEvent(eventName);
-#endif
-                    #endregion
-
-                    break;
-                default:
-                    base.OnEvent(eventName);
-                    break;
-            }
+            return TaskScheduler._AddTaskToDefaultScheduler(this, this);
         }
         #endregion
 
         #region Task Implementation
-        protected override TaskResult DoTask(float stepDeltaTime) {
+        protected override TaskResult _DoTask(float stepDeltaTime) {
             var firstChild = _ownTransform.GetChild(0).gameObject.GetComponent<ExampleSortable>();
             if (_instantiated >= Count) {
                 Destroy(firstChild.gameObject);
-                SendCustomEventDelayedSeconds(nameof(AddNext), 1);
+                SendCustomEventDelayedSeconds(nameof(_AddNext), 1);
                 return TaskResult.Succeeded;
             }
 
             var go = Instantiate(firstChild.gameObject, _ownTransform);
             go.name = _instantiated.ToString();
-            go.GetComponent<ExampleSortable>().value = _instantiated;
+            go.GetComponent<ExampleSortable>().Value = _instantiated;
 
             _instantiated++;
 
             return TaskResult.Unknown;
         }
 
-        public override int GetNeededSteps() {
+        public override int _GetNeededSteps() {
             return Count;
         }
 
-        protected override bool InitTask() {
+        protected override bool _InitTask() {
             // nothing to do
             return true;
+        }
+
+        protected override void _OnTaskFinished() {
+            #region TLP_DEBUG
+#if TLP_DEBUG
+            _DebugLog_OnEvent(nameof(_OnTaskFinished));
+#endif
+            #endregion
         }
         #endregion
 
         #region Benchmarking
-        public void AddNext() {
+        public void _AddNext() {
             if (!HasStartedOk) {
-                Error($"{nameof(AddNext)}: Not initialized");
+                _Error($"{nameof(_AddNext)}: Not initialized");
                 return;
             }
 
@@ -101,8 +95,8 @@ namespace TLP.UdonAVLTree.Runtime
                 var o = _ownTransform.GetChild(_i).gameObject;
                 var tlpBaseBehaviour = o.GetComponent<ExampleSortable>();
                 stopwatch.Restart();
-                if (!AvlTree.Add(tlpBaseBehaviour)) {
-                    ErrorAndDisableGameObject($"Failed to add {o.name}");
+                if (!AvlTree._Add(tlpBaseBehaviour)) {
+                    _ErrorAndDisableGameObject($"Failed to add {o.name}");
                     return;
                 }
 
@@ -113,30 +107,30 @@ namespace TLP.UdonAVLTree.Runtime
                 }
 
                 ++_i;
-                SendCustomEventDelayedFrames(nameof(AddNext), 1);
+                SendCustomEventDelayedFrames(nameof(_AddNext), 1);
             } else {
                 Debug.Log(_i + ": avg add = " + _avgAdd / _i + " ms");
                 Debug.Log(AvlTree.ToString());
                 if (AvlTree.Size > 0) {
-                    Info(AvlTree.Display(AvlTree.RootNode).ToString());
+                    _Info(AvlTree._Display(AvlTree.RootNode).ToString());
                 }
 
                 _avgAdd = 0;
                 _avgRemove = 0;
                 _i = 0;
-                SendCustomEventDelayedFrames(nameof(RemovePrevious), 1);
+                SendCustomEventDelayedFrames(nameof(_RemovePrevious), 1);
             }
         }
 
-        public void RemovePrevious() {
+        public void _RemovePrevious() {
             if (_i < _ownTransform.childCount) {
                 var stopwatch = new Stopwatch();
                 var o = _ownTransform.GetChild(_i).gameObject;
                 var udonSharpBehaviour = o.GetComponent<ExampleSortable>();
 
                 stopwatch.Restart();
-                if (!AvlTree.Remove(udonSharpBehaviour)) {
-                    ErrorAndDisableGameObject($"Did not contain {o.name}");
+                if (!AvlTree._Remove(udonSharpBehaviour)) {
+                    _ErrorAndDisableGameObject($"Did not contain {o.name}");
                     return;
                 }
 
@@ -147,18 +141,18 @@ namespace TLP.UdonAVLTree.Runtime
                 }
 
                 ++_i;
-                SendCustomEventDelayedFrames(nameof(RemovePrevious), 1);
+                SendCustomEventDelayedFrames(nameof(_RemovePrevious), 1);
             } else {
                 Debug.Log(_i + ": avg remove = " + _avgRemove / _i + " ms");
                 Debug.Log(AvlTree.ToString());
                 if (AvlTree.Size > 0) {
-                    Info(AvlTree.Display(AvlTree.RootNode).ToString());
+                    _Info(AvlTree._Display(AvlTree.RootNode).ToString());
                 }
 
                 _avgAdd = 0;
                 _avgRemove = 0;
                 _i = 0;
-                SendCustomEventDelayedFrames(nameof(AddNext), 1);
+                SendCustomEventDelayedFrames(nameof(_AddNext), 1);
             }
         }
         #endregion

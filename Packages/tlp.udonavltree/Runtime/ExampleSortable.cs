@@ -1,8 +1,8 @@
 ﻿using JetBrains.Annotations;
 using TLP.UdonUtils.Runtime;
-using TLP.UdonUtils.Runtime.Common;
 using UdonSharp;
 using UnityEngine;
+using UnityEngine.Serialization;
 using VRC.SDKBase;
 
 namespace TLP.UdonAVLTree.Runtime
@@ -19,41 +19,44 @@ namespace TLP.UdonAVLTree.Runtime
         public new const int ExecutionOrder = TlpExecutionOrder.TimeSourcesStart + 2;
         #endregion
 
-        public int value;
+        [FormerlySerializedAs("value")] public int Value;
 
         #region Comparer Interface
 
+        [FormerlySerializedAs("toCompare")]
         [HideInInspector, PublicAPI]
-        public UdonSharpBehaviour toCompare;
+        public UdonSharpBehaviour ToCompare;
+        [FormerlySerializedAs("compareSuccess")]
         [HideInInspector, PublicAPI]
-        public bool compareSuccess;
+        public bool CompareSuccess;
+        [FormerlySerializedAs("compareResult")]
         [HideInInspector, PublicAPI]
-        public int compareResult;
+        public int CompareResult;
         
         [PublicAPI]
-        public virtual void CompareValues()
+        public virtual void _CompareValues()
         {
-            if (!Utilities.IsValid(toCompare))
+            if (!Utilities.IsValid(ToCompare))
             {
-                compareSuccess = false;
+                CompareSuccess = false;
                 return;
             }
 
-            var other = (ExampleSortable)toCompare;
+            var other = (ExampleSortable)ToCompare;
             if (!Utilities.IsValid(other))
             {
-                compareSuccess = false;
+                CompareSuccess = false;
                 return;
             }
 
-            compareResult = value.CompareTo(other.value);
-            compareSuccess = true;
+            CompareResult = Value.CompareTo(other.Value);
+            CompareSuccess = true;
         }
         #endregion
 
         public override string ToString()
         {
-            return value.ToString();
+            return Value.ToString();
         }
     }
 }

@@ -6,8 +6,7 @@ A AVL tree implementation for U# based VRChat worlds.
 
 ## Installation
 
-1. Install/Add VRChat World SDK 3.10.4 to your project
-2. Install/Add TLP UdonAVLTree to your project: https://guribo.github.io/TLP/
+1. Install/Add TLP UdonAVLTree to your project via VCC or ALCOM: https://guribo.github.io/TLP/
 
 ## Versioning
 
@@ -22,6 +21,11 @@ The used pattern MAJOR.MINOR.PATCH indicates:
 3. PATCH version: backward compatible bug fixes were implemented
    - Implication: after updating remove potential workarounds you added
 
+### [2.0.0] - 2026-08-26
+
+#### 🚜 Refactor
+
+- [**breaking**] Rename public and internal methods in AvlTree classes to use underscore prefix for naming consistency
 ### [1.0.1] - 2026-07-11
 
 #### ⚙️ Miscellaneous Tasks

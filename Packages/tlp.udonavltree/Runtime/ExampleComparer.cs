@@ -18,14 +18,16 @@ namespace TLP.UdonAVLTree.Runtime
         #endregion
 
 
-        protected override bool ComparisonImplementation(
+        protected override bool _ComparisonImplementation(
                 UdonSharpBehaviour first,
                 UdonSharpBehaviour second,
                 out int comparisonResult
         ) {
+            #region TLP_DEBUG
 #if TLP_DEBUG
-            DebugLog(nameof(ExampleComparer));
+            _DebugLog(nameof(ExampleComparer));
 #endif
+#endregion
             comparisonResult = 0;
             if (!Utilities.IsValid(first)) {
                 return false;
@@ -46,7 +48,7 @@ namespace TLP.UdonAVLTree.Runtime
                 return false;
             }
 
-            comparisonResult = a.value.CompareTo(b.value);
+            comparisonResult = a.Value.CompareTo(b.Value);
             return true;
         }
     }
